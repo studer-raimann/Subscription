@@ -14,9 +14,6 @@ require_once('./Customizing/global/plugins/Services/UIComponent/UserInterfaceHoo
  */
 class ilSubscriptionConfigGUI extends ilPluginConfigGUI {
 
-	const CMD_STD = 'configure';
-	const CMD_CANCEL = 'cancel';
-	const CMD_SAVE = 'save';
 	/**
 	 * @var ilCtrl
 	 */
@@ -45,9 +42,9 @@ class ilSubscriptionConfigGUI extends ilPluginConfigGUI {
 	 */
 	public function performCommand($cmd) {
 		switch ($cmd) {
-			case self::CMD_STD:
-			case self::CMD_SAVE:
-			case self::CMD_CANCEL:
+			case 'configure':
+			case 'save':
+			case 'reloadLanguageFiles':
 				$this->$cmd();
 				break;
 		}
@@ -55,6 +52,7 @@ class ilSubscriptionConfigGUI extends ilPluginConfigGUI {
 
 
 	public function configure() {
+		$this->addReloadButton();
 		$form = new msConfigFormGUI($this);
 		$form->fillForm();
 		$this->tpl->setContent($form->getHTML());
@@ -65,14 +63,28 @@ class ilSubscriptionConfigGUI extends ilPluginConfigGUI {
 		$form = new msConfigFormGUI($this);
 		$form->setValuesByPost();
 		if ($form->saveObject()) {
-			$this->ctrl->redirect($this, self::CMD_STD);
+			$this->ctrl->redirect($this, 'configure');
 		}
 		$this->tpl->setContent($form->getHTML());
 	}
 
 
-	protected function cancel() {
-		$this->ctrl->redirect($this, self::CMD_STD);
+	public function reloadLanguageFiles() {
+		$this->pl->updateLanguageFiles();
+		ilUtil::sendSuccess($this->pl->txt('msg_lang_files_reloaded'), true);
+
+		$this->ctrl->redirect($this, 'configure');
+	}
+
+
+	protected function addReloadButton() {
+		if (is_writable('./Customizing/global/plugins/Services/UIComponent/UserInterfaceHook/Subscription/lang/')) {
+			global $ilToolbar;
+			/**
+			 * @var $ilToolbar ilToolbarGUI
+			 */
+			$ilToolbar->addButton($this->pl->txt('button_reload_lang_files'), $this->ctrl->getLinkTarget($this, 'reloadLanguageFiles'));
+		}
 	}
 }
 

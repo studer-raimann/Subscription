@@ -1,15 +1,12 @@
 <?php
-require_once('./Customizing/global/plugins/Services/UIComponent/UserInterfaceHook/Subscription/classes/class.subscr.php');
-subscr::loadActiveRecord();
+require_once('./Customizing/global/plugins/Libraries/ActiveRecord/class.ActiveRecord.php');
 require_once('./Customizing/global/plugins/Services/UIComponent/UserInterfaceHook/Subscription/classes/UserStatus/class.msUserStatus.php');
 require_once('./Customizing/global/plugins/Services/UIComponent/UserInterfaceHook/Subscription/classes/AccountType/class.msAccountType.php');
-require_once('./Modules/Group/classes/class.ilGroupMembershipMailNotification.php');
 
 /**
  * msSubscription
  *
  * @author  Fabian Schmid <fs@studer-raimann.ch>
- * @author  Theodor Truffer <tt@studer-raimann.ch>
  *
  * @version
  */
@@ -25,8 +22,6 @@ class msSubscription extends ActiveRecord {
 	const TYPE_EMAIL = 1;
 	const TYPE_MATRICULATION = 2;
 	const DELIMITER = '|';
-	const CONTEXT_CRS = 1;
-	const CONTEXT_GRP = 2;
 	/**
 	 * @var msUserStatus
 	 */
@@ -38,7 +33,7 @@ class msSubscription extends ActiveRecord {
 
 
 	public function afterObjectLoad() {
-		$this->user_status_object = new msUserStatus($this->getMatchingString(), $this->getSubscriptionType(), $this->getObjRefId());
+		$this->user_status_object = new msUserStatus($this->getMatchingString(), $this->getSubscriptionType(), $this->getCrsRefId());
 		$this->account_type_object = new msAccountType($this->getMatchingString(), $this->getSubscriptionType());
 	}
 
@@ -90,34 +85,7 @@ class msSubscription extends ActiveRecord {
 	}
 
 
-	public function assignToObject() {
-		/**
-		 * @var $participants ilCourseParticipants
-		 */
-		$obj_id = ilObject::_lookupObjId($this->getObjRefId());
 
-		switch ($this->getContext()) {
-			case self::CONTEXT_CRS:
-				$participants = new ilCourseParticipants($obj_id);
-				break;
-			case self::CONTEXT_GRP:
-				$participants = new ilGroupParticipants($obj_id);
-				break;
-		}
-		$usr_id = $this->user_status_object->getUsrId();
-		$status = $participants->add($usr_id, $this->getRole());
-		if ($status AND msConfig::get(msConfig::F_SEND_MAILS)) {
-			switch ($this->getContext()) {
-				case self::CONTEXT_CRS:
-					$participants->sendNotification($participants->NOTIFY_ACCEPT_USER, $usr_id);
-					break;
-				case self::CONTEXT_GRP:
-					$participants->sendNotification(ilGroupMembershipMailNotification::TYPE_ADMISSION_MEMBER, $usr_id);
-					break;
-			}
-		}
-		$this->setDeleted(true);
-	}
 
 
 	//
@@ -156,31 +124,31 @@ class msSubscription extends ActiveRecord {
 
 
 	/**
-	 * @param     $obj_ref_id
+	 * @param     $crs_ref_id
 	 * @param     $input
 	 * @param int $type
-	 * @param     $context
+	 *
+	 * @internal param $mail
 	 */
-	public static function insertNewRequests($obj_ref_id, $input, $type = msSubscription::TYPE_EMAIL, $context) {
+	public static function insertNewRequests($crs_ref_id, $input, $type = msSubscription::TYPE_EMAIL) {
 		$where = array(
 			'matching_string' => $input,
-			'obj_ref_id' => $obj_ref_id,
+			'crs_ref_id' => $crs_ref_id,
 			'deleted' => false
 		);
 		$operators = array(
 			'matching_string' => 'LIKE',
-			'obj_ref_id' => '=',
+			'crs_ref_id' => '=',
 			'deleted' => '='
 		);
-		if (!msSubscription::where($where, $operators)->hasSets() AND $input != '') {
+		if (! msSubscription::where($where, $operators)->hasSets() AND $input != '') {
 			$msSubscription = new msSubscription();
 			$msSubscription->setMatchingString($input);
-			$status = new msUserStatus($input, $type, $obj_ref_id);
-			$msSubscription->setObjRefId($obj_ref_id);
+			$status = new msUserStatus($input, $type, $crs_ref_id);
+			$msSubscription->setCrsRefId($crs_ref_id);
 			$msSubscription->setSubscriptionType($type);
 			$msSubscription->setAccountType(msAccountType::TYPE_ILIAS);
 			$msSubscription->setUserStatus($status->getStatus());
-			$msSubscription->setContext($context);
 			$msSubscription->create();
 		}
 	}
@@ -225,7 +193,7 @@ class msSubscription extends ActiveRecord {
 	 * @db_fieldtype        integer
 	 * @db_length           4
 	 */
-	protected $obj_ref_id;
+	protected $crs_ref_id;
 	/**
 	 * @var string
 	 *
@@ -265,7 +233,7 @@ class msSubscription extends ActiveRecord {
 	 * @db_fieldtype        integer
 	 * @db_length           1
 	 */
-	protected $role = IL_OBJ_MEMBER;
+	protected $role = IL_CRS_MEMBER;
 	/**
 	 * @var bool
 	 *
@@ -291,14 +259,6 @@ class msSubscription extends ActiveRecord {
 	 * @db_length           1
 	 */
 	protected $deleted = false;
-	/**
-	 * @var int
-	 *
-	 * @db_has_field        true
-	 * @db_fieldtype        integer
-	 * @db_length           1
-	 */
-	protected $context = self::CONTEXT_CRS;
 
 
 	/**
@@ -318,18 +278,18 @@ class msSubscription extends ActiveRecord {
 
 
 	/**
-	 * @param int $obj_ref_id
+	 * @param int $crs_ref_id
 	 */
-	public function setObjRefId($obj_ref_id) {
-		$this->obj_ref_id = $obj_ref_id;
+	public function setCrsRefId($crs_ref_id) {
+		$this->crs_ref_id = $crs_ref_id;
 	}
 
 
 	/**
 	 * @return int
 	 */
-	public function getObjRefId() {
-		return $this->obj_ref_id;
+	public function getCrsRefId() {
+		return $this->crs_ref_id;
 	}
 
 
@@ -458,35 +418,6 @@ class msSubscription extends ActiveRecord {
 	 */
 	public function getSubscriptionType() {
 		return $this->subscription_type;
-	}
-
-
-	/**
-	 * @return int
-	 */
-	public function getContext() {
-		return $this->context;
-	}
-
-
-	/**
-	 * @param int $context
-	 */
-	public function setContext($context) {
-		$this->context = $context;
-	}
-
-
-	/**
-	 * @return string
-	 */
-	public function getContextAsString() {
-		switch ($this->getContext()) {
-			case self::CONTEXT_CRS:
-				return 'crs';
-			case self::CONTEXT_GRP:
-				return 'grp';
-		}
 	}
 
 

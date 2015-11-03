@@ -1,8 +1,6 @@
 <?php
 require_once('./Customizing/global/plugins/Services/UIComponent/UserInterfaceHook/Subscription/classes/Subscription/class.msSubscription.php');
 require_once('./Services/Utilities/classes/class.ilConfirmationGUI.php');
-require_once('./Services/Object/classes/class.ilObject2.php');
-require_once('./Customizing/global/plugins/Services/UIComponent/UserInterfaceHook/Subscription/classes/class.subscr.php');
 
 /**
  * Class subscrTriageGUI
@@ -10,7 +8,7 @@ require_once('./Customizing/global/plugins/Services/UIComponent/UserInterfaceHoo
  * @author            Fabian Schmid <fs@studer-raimann.ch>
  * @version           1.0.0
  *
- * @ilCtrl_IsCalledBy subscrTriageGUI : ilRouterGUI, ilUIPluginRouterGUI
+ * @ilCtrl_IsCalledBy subscrTriageGUI : ilRouterGUI
  */
 class subscrTriageGUI {
 
@@ -46,14 +44,7 @@ class subscrTriageGUI {
 
 	public function executeCommand() {
 		$cmd = $this->ctrl->getCmd('start');
-		if(!$this->subscription instanceof msSubscription) {
-			throw new ilException('This token has already been used');
-		}
 		$this->{$cmd}();
-		if (subscr::is50()) {
-			$this->tpl->getStandardTemplate();
-			$this->tpl->show();
-		}
 	}
 
 
@@ -86,18 +77,18 @@ class subscrTriageGUI {
 	protected function showLoginDecision() {
 		$this->tpl->getStandardTemplate();
 		$this->tpl->setVariable('BASE', msConfig::getPath());
-		$this->tpl->setTitle($this->pl->getDynamicTxt('triage_title'));
+		$this->tpl->setTitle($this->pl->txt('triage_title'));
 
 		$de = new ilConfirmationGUI();
 		$de->setFormAction($this->ctrl->getFormAction($this));
 
-		$str = $this->subscription->getMatchingString() . ', Ziel: '
-			. ilObject2::_lookupTitle(ilObject2::_lookupObjId($this->subscription->getObjRefId()));
+		$str = $this->subscription->getMatchingString()
+			. ', Ziel: ' . ilObject2::_lookupTitle(ilObject2::_lookupObjId($this->subscription->getCrsRefId()));
 		$de->addItem('token', $this->token, $str);
 
-		$de->setHeaderText($this->pl->getDynamicTxt('qst_already_account'));
-		$de->setConfirm($this->pl->getDynamicTxt('main_yes'), 'hasLogin');
-		$de->setCancel($this->pl->getDynamicTxt('main_no'), 'hasNoLogin');
+		$de->setHeaderText($this->pl->txt('qst_already_account'));
+		$de->setConfirm($this->pl->txt('main_yes'), 'hasLogin');
+		$de->setCancel($this->pl->txt('main_no'), 'hasNoLogin');
 
 		$this->tpl->setContent($de->getHTML());
 	}
@@ -134,10 +125,11 @@ class subscrTriageGUI {
 		/**
 		 * @var $crs ilObjCourse
 		 */
-		$crs = ilObjectFactory::getInstanceByRefId($this->subscription->getObjRefId());
+		$crs = ilObjectFactory::getInstanceByRefId($this->subscription->getCrsRefId());
 		if (! $crs->isRegistrationAccessCodeEnabled()) {
 			$crs->enableRegistrationAccessCode(1);
 			$crs->update();
+			// return $crs;
 		}
 
 		return $crs->getRegistrationAccessCode();
@@ -152,11 +144,7 @@ class subscrTriageGUI {
 
 	protected function redirectToTokenRegistrationGUI() {
 		$this->ctrl->setParameterByClass('ilTokenRegistrationGUI', 'token', $this->token);
-		if (subscr::is44()) {
-			$this->ctrl->redirectByClass(array( 'ilRouterGUI', 'ilTokenRegistrationGUI' ));
-		} else {
-			$this->ctrl->redirectByClass(array( 'ilUIPluginRouterGUI', 'ilTokenRegistrationGUI' ));
-		}
+		$this->ctrl->redirectByClass(array( 'ilRouterGUI', 'ilTokenRegistrationGUI' ));
 	}
 
 
@@ -164,9 +152,7 @@ class subscrTriageGUI {
 	 * @return string
 	 */
 	protected function getLoginLonk() {
-		return
-			msConfig::getPath() . 'goto.php?target' . $this->subscription->getContextAsString() . '_' . $this->subscription->getObjRefId() . '_rcode'
-			. $this->getRegistrationCode();
+		return msConfig::getPath() . 'goto.php?target=crs_' . $this->subscription->getCrsRefId() . '_rcode' . $this->getRegistrationCode();
 	}
 }
 

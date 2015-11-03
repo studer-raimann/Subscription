@@ -126,19 +126,19 @@ class msTriage {
 	protected function showLoginDecision() {
 		$this->tpl->getStandardTemplate();
 		$this->tpl->setVariable('BASE', msConfig::getPath());
-		$this->tpl->setTitle($this->pl->getDynamicTxt('triage_title'));
+		$this->tpl->setTitle($this->pl->txt('triage_title'));
 
 		$de = new ilConfirmationGUI();
 		$de->setFormAction('./Customizing/global/plugins/Services/UIComponent/UserInterfaceHook/Subscription/classes/triage.php');
 		//$this->pl->txt('subscription_type_' . $this->subscription->getSubscriptionType()) . ': '
 		//.
 		$str = $this->subscription->getMatchingString()
-			. ', Ziel: ' . ilObject2::_lookupTitle(ilObject2::_lookupObjId($this->subscription->getObjRefId()));
+			. ', Ziel: ' . ilObject2::_lookupTitle(ilObject2::_lookupObjId($this->subscription->getCrsRefId()));
 		$de->addItem('token', $this->token, $str);
 
-		$de->setHeaderText($this->pl->getDynamicTxt('qst_already_account'));
-		$de->setConfirm($this->pl->getDynamicTxt('main_yes'), 'hasLogin');
-		$de->setCancel($this->pl->getDynamicTxt('main_no'), 'hasNoLogin');
+		$de->setHeaderText($this->pl->txt('qst_already_account'));
+		$de->setConfirm($this->pl->txt('main_yes'), 'hasLogin');
+		$de->setCancel($this->pl->txt('main_no'), 'hasNoLogin');
 
 		$this->tpl->setContent($de->getHTML());
 		$this->tpl->show();
@@ -163,7 +163,7 @@ class msTriage {
 
 	public function redirectToLogin() {
 		$this->setSubscriptionToDeleted();
-		$link = msConfig::getPath() . 'goto.php?target=crs_' . $this->subscription->getObjRefId() . '_rcode' . $this->getRegistrationCode();
+		$link = msConfig::getPath() . 'goto.php?target=crs_' . $this->subscription->getCrsRefId() . '_rcode' . $this->getRegistrationCode();
 
 		ilUtil::redirect($link);
 	}
@@ -176,7 +176,7 @@ class msTriage {
 		/**
 		 * @var $crs ilObjCourse
 		 */
-		$crs = ilObjectFactory::getInstanceByRefId($this->subscription->getObjRefId());
+		$crs = ilObjectFactory::getInstanceByRefId($this->subscription->getCrsRefId());
 		if (! $crs->isRegistrationAccessCodeEnabled()) {
 			$crs->enableRegistrationAccessCode(1);
 			$crs->update();
@@ -199,8 +199,24 @@ class msTriage {
 			$this->ctrl->initBaseClass('ilStartUpGUI');
 			$this->ctrl->setTargetScript('/ilias.php');
 			$this->ctrl->setControllerContext(array( 'ilStartUpGUI', 'ilaccountregistrationgui' ));
+			//			echo $this->ctrl->getLinkTargetByClass('ilTokenRegistrationGUI');
 			$this->ctrl->redirectByClass('ilTokenRegistrationGUI');
 		} else {
+			//			$this->ctrl->initBaseClass('ilStartUpGUI');
+			//			$this->ctrl->setTargetScript('/register.php');
+			//			$this->ctrl->setParameterByClass('ilTokenRegistrationGUI', 'token', $_REQUEST['token']);
+			//			$this->ctrl->setCmdClass('ilTokenRegistrationGUI');
+			//			echo $this->ctrl->getLinkTargetByClass(array('ilAccountRegistrationGUI','ilTokenRegistrationGUI'));
+			//
+			//			exit;
+
+//			$this->ctrl->initBaseClass('ilRouterGUI');
+//			$this->ctrl->setTargetScript('/ilias.php');
+//			$this->ctrl->setParameterByClass('ilTokenRegistrationGUI', 'token', $_REQUEST['token']);
+//			$arr = array( 'ilRouterGUI', 'ilTokenRegistrationGUI' );
+//									echo $this->ctrl->getLinkTargetByClass($arr);
+//			$this->ctrl->redirectByClass($arr);
+
 			ilUtil::redirect('/goto.php?target=subscr_' . $_REQUEST['token']);
 		}
 	}
